@@ -30,7 +30,7 @@ import axios from "axios";
       }
     
       try {
-        const res = await axios.post("http://192.168.196.152:5001/api/auth/login", {phone,password}, {
+        const res = await axios.post("http://192.168.15.152:5001/api/auth/login", {phone,password}, {
           headers: {
             "Content-Type": "application/json",
           },

@@ -73,7 +73,7 @@ export default function Register() {
     };
 
     try {
-      const res = await axios.post("http://192.168.196.152:5001/api/auth/register", userData, {
+      const res = await axios.post("http://192.168.15.152:5001/api/auth/register", userData, {
         headers: {
           "Content-Type": "application/json",
         },

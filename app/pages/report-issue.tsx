@@ -1,102 +1,22 @@
-// import React from "react";
-// import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-
-// export default function ReportDash() {
-//   return (
-//     <View style={styles.container}>
-//       <Text style={styles.title}>📢 Issue Dashboard</Text>
-
-//       <TouchableOpacity style={[styles.button, styles.reportButton]}>
-//         <Text style={styles.buttonText}>📝 Report a New Issue</Text>
-//       </TouchableOpacity>
-
-//       <TouchableOpacity style={[styles.button, styles.viewButton]}>
-//         <Text style={styles.buttonText}>📜 See All Issues</Text>
-//       </TouchableOpacity>
-
-//       <TouchableOpacity style={[styles.button, styles.feedbackButton]}>
-//         <Text style={styles.buttonTextDark}>💬 Give Feedback</Text>
-//       </TouchableOpacity>
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: "#121212", // Dark Mode
-//     alignItems: "center",
-//     justifyContent: "center",
-//     padding: 20,
-//   },
-//   title: {
-//     fontSize: 24,
-//     fontWeight: "bold",
-//     color: "#ffffff",
-//     marginBottom: 30,
-//   },
-//   button: {
-//     width: "90%",
-//     padding: 15,
-//     borderRadius: 12,
-//     alignItems: "center",
-//     marginVertical: 10,
-//     elevation: 5, // Shadow for Android
-//     shadowColor: "#000", // Shadow for iOS
-//     shadowOffset: { width: 0, height: 3 },
-//     shadowOpacity: 0.3,
-//     shadowRadius: 5,
-//   },
-//   reportButton: {
-//     backgroundColor: "#3498db", // Blue
-//   },
-//   viewButton: {
-//     backgroundColor: "#2ecc71", // Green
-//   },
-//   feedbackButton: {
-//     backgroundColor: "#f1c40f", // Yellow
-//   },
-//   buttonText: {
-//     color: "#ffffff",
-//     fontSize: 18,
-//     fontWeight: "bold",
-//   },
-//   buttonTextDark: {
-//     color: "#333",
-//     fontSize: 18,
-//     fontWeight: "bold",
-//   },
-// });
-
-
-
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Dimensions, ScrollView, Image, Alert } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import * as Location from "expo-location";
-import { useEffect } from "react";
-
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ImageBackground,
-  Dimensions,
-  ScrollView,
-  Image,
-} from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
-import * as ImagePicker from "expo-image-picker"; // NEW
+import axios from "axios";
+import { useRouter } from "expo-router";
 
 const screenWidth = Dimensions.get("window").width;
 
-export default function CreateIssue({ navigation }) {
-  const [selectedCategory, setSelectedCategory] = useState("");
+export default function CreateIssue() {
+  const router=useRouter()
+  const navigation = useNavigation(); // hook-based fallback navigation
+  const [department, setDepartment] = useState("");
   const [issueAddress, setIssueAddress] = useState("");
-  const [additionalInfo, setAdditionalInfo] = useState("");
+  const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
-  const [image, setImage] = useState(null); // NEW
+  const [image, setImage] = useState(""); // Holds the selected image URI
 
   useEffect(() => {
     (async () => {
@@ -105,12 +25,12 @@ export default function CreateIssue({ navigation }) {
         console.log("Permission to access location was denied");
         return;
       }
-  
+
       let location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
-  
+
       let geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
-  
+
       if (geocode.length > 0) {
         const addr = geocode[0];
         const fullAddress = `${addr.name}, ${addr.street}, ${addr.city}, ${addr.region}, ${addr.postalCode}`;
@@ -133,7 +53,6 @@ export default function CreateIssue({ navigation }) {
     "Public Relations Department",
   ];
 
-  // NEW
   const handleCameraPress = async () => {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
     if (permissionResult.granted === false) {
@@ -146,28 +65,63 @@ export default function CreateIssue({ navigation }) {
       quality: 0.5,
     });
 
-    if (!result.canceled) {
+    if (!result.canceled && result.assets.length > 0) {
       setImage(result.assets[0].uri);
     }
   };
 
+  const handleSubmit = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("department", department);
+      formData.append("issueAddress", issueAddress);
+      formData.append("description", description);
+  
+      if (image) {
+        // Get the filename from the image URI
+        const filename = image.split("/").pop();
+  
+        // Ensure that filename is a string and fallback if necessary
+        const safeFilename = filename || "https://tse2.mm.bing.net/th?id=OIP.7cRYFyLoDEDh4sRtM73vvwHaDg&pid=Api&P=0&h=180"; // Provide a default name if undefined
+  
+        const match = /\.(\w+)$/.exec(safeFilename);
+        const type = match ? `image/${match[1]}` : image;
+  
+        // Convert the image URI to a Blob
+        const imageBlob = await fetch(image).then((res) => res.blob());
+        
+        // Append the image Blob with the safe filename
+        formData.append("image", imageBlob, safeFilename);
+      }
+  
+      const response = await axios.post("http://192.168.15.152:5001/api/issues/createissue", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          // Authorization: `Bearer ${token}`
+        },
+      });
+  
+      if (response.status === 200) {
+        Alert.alert("Success", "Issue reported successfully!");
+        router.push('/pages/dashboard')
+      } else {
+        Alert.alert("Error", "Something went wrong.");
+      }
+    } catch (error) {
+      console.error("Error reporting issue:", error);
+      Alert.alert("Error", "Failed to report issue.");
+    }
+  };
+
   return (
-    <ImageBackground
-      source={{
-        uri: "https://i.ytimg.com/vi/L_nIDuFmKdY/hq2.jpg?sqp=-oaymwEoCOADEOgC8quKqQMcGADwAQH4Ac4FgAKACooCDAgAEAEYfyBFKBMwDw==&rs=AOn4CLDP3KnHYae-UetlKksLE1d85-BOwg",
-      }}
-      style={styles.background}
-      resizeMode="cover"
-    >
+    <ImageBackground  source={{ uri: "https://i.ytimg.com/vi/L_nIDuFmKdY/hq2.jpg" }} style={styles.background} resizeMode="cover">
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Back Button */}
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
 
         <Text style={styles.title}>Create a New Issue</Text>
 
-        {/* Camera/Image Section */}
         <TouchableOpacity style={styles.cameraBox} onPress={handleCameraPress}>
           {image ? (
             <Image source={{ uri: image }} style={styles.previewImage} />
@@ -178,11 +132,7 @@ export default function CreateIssue({ navigation }) {
 
         <Text style={styles.label}>Select Issue Category</Text>
         <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={selectedCategory}
-            onValueChange={(itemValue) => setSelectedCategory(itemValue)}
-            style={styles.picker}
-          >
+          <Picker selectedValue={department} onValueChange={(itemValue) => setDepartment(itemValue)} style={styles.picker}>
             <Picker.Item label="Select a category" value="" />
             {categories.map((category, index) => (
               <Picker.Item key={index} label={category} value={category} />
@@ -191,34 +141,15 @@ export default function CreateIssue({ navigation }) {
         </View>
 
         <Text style={styles.label}>Issue Address</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter issue address"
-          value={issueAddress}
-          onChangeText={setIssueAddress}
-          placeholderTextColor="#888"
-        />
+        <TextInput style={styles.input} placeholder="Enter issue address" value={issueAddress} onChangeText={setIssueAddress} placeholderTextColor="#888" />
 
         <Text style={styles.label}>Additional Information</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter additional details"
-          value={additionalInfo}
-          onChangeText={setAdditionalInfo}
-          placeholderTextColor="#888"
-        />
+        <TextInput style={styles.input} placeholder="Enter additional details" value={description} onChangeText={setDescription} placeholderTextColor="#888" />
 
         <Text style={styles.label}>Address</Text>
-        <TextInput
-          style={styles.largeInput}
-          placeholder="Enter full address"
-          value={address}
-          onChangeText={setAddress}
-          multiline
-          placeholderTextColor="#888"
-        />
+        <TextInput style={styles.largeInput} placeholder="Enter full address" value={address} onChangeText={setAddress} multiline placeholderTextColor="#888" />
 
-        <TouchableOpacity style={styles.reportButton}>
+        <TouchableOpacity style={styles.reportButton} onPress={handleSubmit}>
           <Text style={styles.reportButtonText}>Report Issue</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -330,13 +261,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
     elevation: 5,
   },
   reportButtonText: {
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 18,
     color: "#fff",
+    fontWeight: "600",
   },
 });
