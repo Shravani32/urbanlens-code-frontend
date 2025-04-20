@@ -6,6 +6,8 @@ import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import { useRouter } from "expo-router";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -70,13 +72,15 @@ export default function CreateIssue() {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async() => {
     try {
       const formData = new FormData();
       formData.append("department", department);
       formData.append("issueAddress", issueAddress);
       formData.append("description", description);
-  
+
+      const token = await AsyncStorage.getItem('token');
+      
       if (image) {
         // Get the filename from the image URI
         const filename = image.split("/").pop();
@@ -97,9 +101,11 @@ export default function CreateIssue() {
       const response = await axios.post("http://192.168.15.152:5001/api/issues/createissue", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
-          // Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         },
       });
+
+      alert(response);
   
       if (response.status === 200) {
         Alert.alert("Success", "Issue reported successfully!");

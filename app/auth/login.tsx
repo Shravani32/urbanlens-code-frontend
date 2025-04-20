@@ -7,6 +7,8 @@ import {
   import { LinearGradient } from "expo-linear-gradient"; 
 import MarqueeText from "@/components/MarqueeText";
 import axios from "axios";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
   
   export default function Login() {
     const router = useRouter();
@@ -28,25 +30,27 @@ import axios from "axios";
         alert("Please fill in all fields.");
         return;
       }
-    
+  
       try {
-        const res = await axios.post("http://192.168.15.152:5001/api/auth/login", {phone,password}, {
-          headers: {
-            "Content-Type": "application/json",
-          },
+        const res = await axios.post("http://192.168.15.152:5001/api/auth/login", {
+          phone,
+          password
         });
-      
-        if (res.status === 200 || res.status === 201) {
-          Alert.alert("Success", "User LoggedIn successfully!");
-          router.push("/pages/Home");
-        } else {
-          Alert.alert("Error", "Failed to Logged in user");
-        }
+  
+        const { token, user } = res.data;
+        alert(user)
+        alert(user._id);
+  
+        await AsyncStorage.setItem("token", token);
+        await AsyncStorage.setItem("user", JSON.stringify(user));
+        await AsyncStorage.setItem("userId", user._id);  
+  
+        Alert.alert("Success", "User LoggedIn successfully!");
+        router.push("/pages/Home"); // or wherever Dashboard is
       } catch (err) {
-        console.error(err);
+        console.error("Login Error:", err.response?.data || err.message);
         Alert.alert("Error", "An error occurred during Login");
       }
-    
     };
   
     return (
