@@ -19,18 +19,21 @@ const DashboardScreen = () => {
 
   const fetchUserPosts = async () => {
     try {
-      // const userId = await AsyncStorage.getItem("userId");
       const userData = await AsyncStorage.getItem("user");
       const user = userData ? JSON.parse(userData) : null;
       const userId = user?._id;
-      alert(userId);
+
       if (!userId) {
         console.log("User ID not found in storage");
         return;
       }
 
+      console.log("Fetching posts for user:", userId);
+
       const res = await axios.get(`http://192.168.15.152:5001/api/issues/userposts/${userId}`);
       alert(res.data)
+      console.log("Fetched posts:", res.data);
+
       setPosts(res.data);
     } catch (err) {
       console.error("Failed to load posts", err);
@@ -54,26 +57,38 @@ const DashboardScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Your Reported Issues</Text>
-      <FlatList
-        data={posts}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            {item.image && (
-              <Image
-                source={{ uri: `data:${item.imageType};base64,${item.image}` }}
-                style={styles.image}
-              />
-            )}
-            <Text style={styles.description}>{item.description}</Text>
-            <Text style={styles.meta}>Department: {item.department}</Text>
-            <Text style={[styles.status, styles[item.status.toLowerCase()]]}>
-              {item.status.toUpperCase()}
-            </Text>
-            <Text style={styles.date}>{new Date(item.createdAt).toLocaleString()}</Text>
-          </View>
-        )}
-      />
+
+      {posts.length === 0 ? (
+        <Text style={{ textAlign: 'center', marginTop: 20 }}>No reported issues yet.</Text>
+      ) : (
+        <FlatList
+          data={posts}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              {item.image && item.imageType && (
+                <Image
+                  source={{ uri: `data:${item.imageType};base64,${item.image}` }}
+                  style={styles.image}
+                />
+              )}
+              <Text style={styles.description}>{item.description}</Text>
+              <Text style={styles.meta}>Department: {item.department}</Text>
+              <Text
+                style={[
+                  styles.status,
+                  styles[item.status?.toLowerCase()] || { backgroundColor: '#eee', color: '#333' },
+                ]}
+              >
+                {item.status.toUpperCase()}
+              </Text>
+              <Text style={styles.date}>
+                {item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}
+              </Text>
+            </View>
+          )}
+        />
+      )}
     </View>
   );
 };

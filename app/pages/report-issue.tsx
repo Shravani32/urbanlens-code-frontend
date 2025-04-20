@@ -8,17 +8,16 @@ import axios from "axios";
 import { useRouter } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
 const screenWidth = Dimensions.get("window").width;
 
 export default function CreateIssue() {
-  const router=useRouter()
-  const navigation = useNavigation(); // hook-based fallback navigation
+  const router = useRouter();
+  const navigation = useNavigation();
   const [department, setDepartment] = useState("");
   const [issueAddress, setIssueAddress] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
-  const [image, setImage] = useState(""); // Holds the selected image URI
+  const [image, setImage] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -32,7 +31,6 @@ export default function CreateIssue() {
       const { latitude, longitude } = location.coords;
 
       let geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
-
       if (geocode.length > 0) {
         const addr = geocode[0];
         const fullAddress = `${addr.name}, ${addr.street}, ${addr.city}, ${addr.region}, ${addr.postalCode}`;
@@ -42,17 +40,9 @@ export default function CreateIssue() {
   }, []);
 
   const categories = [
-    "Lighting Department",
-    "Health Department",
-    "Sewerage and Drainage Department",
-    "Stray Animals",
-    "Gardening Department",
-    "Water Department",
-    "Consumer Affairs",
-    "Pan, Gutkha, Spitting Related / Spitting Related",
-    "Prime Minister Housing Scheme",
-    "Paid Sanitization Services",
-    "Public Relations Department",
+    "Lighting Department", "Health Department", "Sewerage and Drainage Department", "Stray Animals",
+    "Gardening Department", "Water Department", "Consumer Affairs", "Pan, Gutkha, Spitting Related",
+    "Prime Minister Housing Scheme", "Paid Sanitization Services", "Public Relations Department",
   ];
 
   const handleCameraPress = async () => {
@@ -72,55 +62,58 @@ export default function CreateIssue() {
     }
   };
 
-  const handleSubmit = async() => {
+  const handleSubmit = async () => {
+    if (!department || !issueAddress || !description || !address) {
+      Alert.alert("Missing Fields", "Please fill all the fields before submitting.");
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append("department", department);
       formData.append("issueAddress", issueAddress);
       formData.append("description", description);
+      formData.append("address", address);
 
       const token = await AsyncStorage.getItem('token');
-      
+
       if (image) {
-        // Get the filename from the image URI
         const filename = image.split("/").pop();
-  
-        // Ensure that filename is a string and fallback if necessary
-        const safeFilename = filename || "https://tse2.mm.bing.net/th?id=OIP.7cRYFyLoDEDh4sRtM73vvwHaDg&pid=Api&P=0&h=180"; // Provide a default name if undefined
-  
-        const match = /\.(\w+)$/.exec(safeFilename);
-        const type = match ? `image/${match[1]}` : image;
-  
-        // Convert the image URI to a Blob
-        const imageBlob = await fetch(image).then((res) => res.blob());
-        
-        // Append the image Blob with the safe filename
-        formData.append("image", imageBlob, safeFilename);
+        const match = /\.(\w+)$/.exec(filename ?? "");
+        const ext = match ? match[1] : "jpg";
+        const type = `image/${ext}`;
+
+        const imageBlob = await (await fetch(image)).blob();
+
+        formData.append("image", {
+          uri: image,
+          name: filename,
+          type: type,
+        }as any);
       }
-  
+
       const response = await axios.post("http://192.168.15.152:5001/api/issues/createissue", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
       });
 
-      alert(response);
-  
-      if (response.status === 200) {
+      if (response.status === 200 || response.status === 201) {
         Alert.alert("Success", "Issue reported successfully!");
-        router.push('/pages/dashboard')
+        router.push("/pages/dashboard");
       } else {
-        Alert.alert("Error", "Something went wrong.");
+        console.log("Unexpected response:", response);
+        Alert.alert("Error", "Something went wrong while submitting the issue.");
       }
     } catch (error) {
-      console.error("Error reporting issue:", error);
-      Alert.alert("Error", "Failed to report issue.");
+      console.error("Error submitting issue:", error);
+      Alert.alert("Error", "Failed to report the issue. Check your internet or try again later.");
     }
   };
 
   return (
-    <ImageBackground  source={{ uri: "https://i.ytimg.com/vi/L_nIDuFmKdY/hq2.jpg" }} style={styles.background} resizeMode="cover">
+    <ImageBackground source={{ uri: "https://i.ytimg.com/vi/L_nIDuFmKdY/hq2.jpg" }} style={styles.background} resizeMode="cover">
       <ScrollView contentContainerStyle={styles.container}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
           <Text style={styles.backText}>←</Text>
@@ -138,7 +131,7 @@ export default function CreateIssue() {
 
         <Text style={styles.label}>Select Issue Category</Text>
         <View style={styles.pickerContainer}>
-          <Picker selectedValue={department} onValueChange={(itemValue) => setDepartment(itemValue)} style={styles.picker}>
+          <Picker selectedValue={department} onValueChange={setDepartment} style={styles.picker}>
             <Picker.Item label="Select a category" value="" />
             {categories.map((category, index) => (
               <Picker.Item key={index} label={category} value={category} />
