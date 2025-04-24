@@ -13,24 +13,23 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { useCameraPermissions } from "expo-camera";
 import MarqueeText from "@/components/MarqueeText";
-import axios from 'axios';
-
+import axios from "axios";
+import { Picker } from "@react-native-picker/picker";
 
 export default function Register() {
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
-  const [aadhar, setAadhar] = useState("");
+  const [adharNo, setadharNo] = useState("");
   const [password, setPassword] = useState("");
-  const [rePassword, setRePassword] = useState("");
+  const [confirmPassword, setconfirmPassword] = useState("");
   const [location, setLocation] = useState<Location.LocationObjectCoords | null>(null);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const [role,setRole]=useState('');
+  const [role, setRole] = useState("");
 
   useEffect(() => {
     const requestPermissions = async () => {
-      // Request Location Permission
       const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
       if (locationStatus !== "granted") {
         Alert.alert("Permission Denied", "Location access is required to register.");
@@ -40,7 +39,6 @@ export default function Register() {
       const loc = await Location.getCurrentPositionAsync({});
       setLocation(loc.coords);
 
-      // Request Camera Permission
       if (!cameraPermission || !cameraPermission.granted) {
         const cameraResult = await requestCameraPermission();
         if (!cameraResult.granted) {
@@ -62,14 +60,14 @@ export default function Register() {
       firstName,
       lastName,
       phone,
-      aadhar,
+      adharNo,
       password,
-      rePassword,
+      confirmPassword,
       location: {
         latitude: location.latitude,
         longitude: location.longitude,
       },
-      role
+      role,
     };
 
     try {
@@ -78,7 +76,7 @@ export default function Register() {
           "Content-Type": "application/json",
         },
       });
-    
+
       if (res.status === 200 || res.status === 201) {
         Alert.alert("Success", "User registered successfully!");
         router.push("/auth/login");
@@ -99,14 +97,12 @@ export default function Register() {
 
       <Text style={styles.title}>Register</Text>
 
-      {[
-        { placeholder: "First Name", value: firstName, set: setFirstName },
+      {[{ placeholder: "First Name", value: firstName, set: setFirstName },
         { placeholder: "Last Name", value: lastName, set: setLastName },
         { placeholder: "Phone Number", value: phone, set: setPhone, keyboardType: "phone-pad" },
-        { placeholder: "aadhar Number", value: aadhar, set: setAadhar, keyboardType: "numeric" },
+        { placeholder: "Adhar Number", value: adharNo, set: setadharNo, keyboardType: "numeric" },
         { placeholder: "Password", value: password, set: setPassword, secure: true },
-        { placeholder: "Re-enter Password", value: rePassword, set: setRePassword, secure: true },
-        { placeholder: "Role", value: role,set:setRole  },
+        { placeholder: "Re-enter Password", value: confirmPassword, set: setconfirmPassword, secure: true }
       ].map((field, index) => (
         <View style={styles.inputContainer} key={index}>
           <TextInput
@@ -119,8 +115,22 @@ export default function Register() {
             secureTextEntry={field.secure}
           />
         </View>
-
       ))}
+
+      {/* Role Dropdown */}
+      <View style={styles.inputContainer}>
+        <Picker
+          selectedValue={role}
+          onValueChange={(itemValue) => setRole(itemValue)}
+          style={styles.picker}
+        >
+          <Picker.Item label="Select Role" value="" />
+          <Picker.Item label="Department Head" value="departmenthead" />
+          <Picker.Item label="Commissioner" value="commissioner" />
+          <Picker.Item label="Local People" value="localPeople" />
+          <Picker.Item label="Admin" value="admin" />
+        </Picker>
+      </View>
 
       <TouchableOpacity style={styles.button} onPress={handleRegister}>
         <LinearGradient colors={["#2563EB", "#1E40AF"]} style={styles.gradientButton}>
@@ -173,6 +183,12 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   input: {
+    fontSize: 16,
+    color: "#111827",
+    width: "100%",
+  },
+  picker: {
+    height: 50,
     fontSize: 16,
     color: "#111827",
     width: "100%",
